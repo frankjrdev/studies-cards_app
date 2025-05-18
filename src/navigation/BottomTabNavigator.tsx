@@ -1,40 +1,41 @@
-import { Ionicons } from '@expo/vector-icons'; // Puedes usar cualquier icono
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import React from 'react';
-import CustomHeader from '../components/CustomHeader';
-import HomeScreen from '../screens/HomeScreen';
-import ProjectsScreen from '../screens/ProjectsScreen';
-import StatsScreenScreen from '../screens/StatsScreen.';
-import colors from '../theme/colors';
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
+import { TabParamList } from '../types/navigation.types';
+import { Ionicons } from '@expo/vector-icons';
+import { colors } from '../constants/colors';
 
-const Tab = createBottomTabNavigator();
+export default function BottomTabNavigator() {
+    const Tab = createBottomTabNavigator<TabParamList>();
 
-export default function BottomTabNavigation() {
-  return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        header: (props) => <CustomHeader {...props} />,
 
-        tabBarIcon: ({ color, size }) => {
-          let iconName: 'home' | 'folder' | 'stats-chart' = 'home';
 
-          if (route.name === 'Home') {
-            iconName = 'home';
-          } else if (route.name === 'Projects') {
-            iconName = 'folder';
-          } else if (route.name === 'Stats') {
-            iconName = 'stats-chart';
-          }
+    return (
+        <Tab.Navigator screenOptions={({route}) => ({
+            tabBarIcon: ({focused, color, size}) => {
+                let iconName;
+                if (route.name === 'Home') {
+                    iconName = focused ? 'home' : 'home-outline';
+                } else if (route.name === 'Settings') {
+                    iconName = focused ? 'settings' : 'settings-outline';
+                }else if (route.name === 'Study') {
+                    iconName = focused ? 'book' : 'book-outline';
+                }
 
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
-        tabBarShowLabel: false,
-        tabBarActiveTintColor: colors.background,
-      })}
-    >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Projects" component={ProjectsScreen} />
-      <Tab.Screen name="Stats" component={StatsScreenScreen} />
-    </Tab.Navigator>
-  );
+                return <Ionicons name={iconName as any} size={size} color={color} />
+            },
+            tabBarActiveTintColor: colors.pink[500],
+            tabBarInactiveTintColor: 'gray',
+            headerShown: false,
+        })} >
+            <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Inicio' }} />
+      <Tab.Screen 
+        name="Study" 
+        component={StudyScreen} 
+        options={{ 
+          title: 'Estudiar',
+          tabBarButton: (props) => null, // Ocultar esta pestaña del tab bar
+        }} 
+      />
+      <Tab.Screen name="Settings" component={SettingsScreen} options={{ title: 'Config' }} />
+        </Tab.Navigator>
+    )
 }

@@ -1,15 +1,13 @@
-import { createNativeStackNavigator } from "@react-navigation/native-stack"
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation.types';
-import BottomTabNavigator from "@/navigation/BottomTabNavigator";
+import BottomTabNavigator from './BottomTabNavigator';
 
 export default function AppNavigator() {
-    const Stack = createNativeStackNavigator<RootStackParamList>();
+  const Stack = createNativeStackNavigator<RootStackParamList>();
 
-
-
-    return (
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="Main" component={BottomTabNavigator} />
-        </Stack.Navigator>
-    )
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Main" component={BottomTabNavigator} />
+    </Stack.Navigator>
+  );
 }

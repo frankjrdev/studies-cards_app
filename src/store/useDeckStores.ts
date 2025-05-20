@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Deck } from '../types/flashcard.types';
+import { useStudyStore } from './useStudyStore';
 
 // Sample decks
 const sampleDecks: Deck[] = [
@@ -96,10 +97,16 @@ export const useDecksStore = create<DecksStore>((set, get) => ({
     const selectedDecks = decks.filter((deck) =>
       selectedDeckIds.includes(deck.id)
     );
-    const combinedCards = selectedDecks.flatMap((deck) => deck.cards);
+    const combinedCards = selectedDecks.flatMap((deck) => 
+      deck.cards.map(card => ({
+        ...card,
+        deckId: deck.id,
+        deckName: deck.name,
+        deckColor: deck.color,
+      }))
+    );
 
     // Actualizar el store de estudio con las tarjetas seleccionadas
-    // Esto se haría normalmente con una acción en useStudyStore
-    // Pero para simplificar, podríamos hacerlo directamente aquí
+    useStudyStore.getState().setStudyCards(combinedCards);
   },
 }));

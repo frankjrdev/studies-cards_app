@@ -6,8 +6,17 @@ export default function AppNavigator() {
   const Stack = createNativeStackNavigator<RootStackParamList>();
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Main" component={BottomTabNavigator} />
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        animation: 'fade',
+        animationDuration: 300,
+      }}
+    >
+      <Stack.Screen 
+        name="Main" 
+        component={BottomTabNavigator}
+      />
     </Stack.Navigator>
   );
 }

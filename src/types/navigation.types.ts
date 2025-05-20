@@ -1,8 +1,12 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
 
+export type StudyScreenParams = {
+  startSession?: boolean;
+};
+
 export type TabParamList = {
   Home: undefined;
-  Study: undefined;
+  Study: StudyScreenParams | undefined;
   Settings: undefined;
 };
 

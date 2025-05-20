@@ -9,7 +9,9 @@ import DeckItem from './components/DeckItem';
 import { colors } from '../../constants/colors';
 import { useDecksStore } from '@/store/useDeckStores';
 
-type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Main'>;
+type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Main'> & {
+  navigate: (screen: 'Main', params: { screen: string; params?: { startSession: boolean } }) => void;
+};
 
 export default function HomeScreen() {
   const navigation = useNavigation<HomeScreenNavigationProp>();
@@ -17,8 +19,11 @@ export default function HomeScreen() {
     useDecksStore();
 
   const handlerStartStudy = () => {
-    startStudySession();
-    navigation.navigate('Main', { screen: 'Study' });
+    // Primero navegamos y luego actualizamos el estado
+    navigation.navigate('Main', { 
+      screen: 'Study',
+      params: { startSession: true }
+    });
   };
 
   return (

@@ -4,25 +4,24 @@
     "slug": "studies-cards-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/images/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
+    "sdkVersion": "53.0.0",
+    "platforms": ["ios", "android", "web"],
     "assetBundlePatterns": ["**/*"],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yourcompany.studiescardsapp"
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+      "package": "com.yourcompany.studiescardsapp"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "your-project-id"
       }
     },
-    "web": {
-      "favicon": "./assets/images/favicon.png"
+    "updates": {
+      "fallbackToCacheTimeout": 0
     }
   }
 }

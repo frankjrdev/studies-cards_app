@@ -1,115 +1,206 @@
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import {
-  Animated,
   Dimensions,
-  Easing,
   SafeAreaView,
   StyleSheet,
   TouchableOpacity,
   View,
   Text,
 } from 'react-native';
-import { useStudyStore } from '../../store/useStudyStore';
+import { useStudyStore } from '@/store/useStudyStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
+import { useDecksStore } from '@/store/useDeckStores';
+import { Deck, FlashcardData } from '@/types/flashcard.types';
 import Timer from './components/Timer';
 import React, { useEffect, useRef } from 'react';
-import {
+import Animated, {
   interpolate,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
+  Easing,
 } from 'react-native-reanimated';
 import { colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
+
 const { width, height } = Dimensions.get('window');
 import ResultOptions from './components/ResultOptions';
 
 export default function StudyScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
+  const route = useRoute();
+  const params = (route.params || {}) as { startSession?: boolean };
+
   const {
     currentStudyCards,
     currentCardIndex,
     isFlipped,
     timeLeft,
     timerActive,
+    setStudyCards,
     flipCard,
     nextCard,
-    resetStudySession,
     tickTimer,
+    resetTimer,
+    pauseTimer,
+    resetStudySession,
   } = useStudyStore();
+  const { timerDuration } = useSettingsStore();
 
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const { selectedDeckIds, decks } = useDecksStore();
+
   const rotation = useSharedValue(0);
-
-  const currentCard = currentStudyCards[currentCardIndex];
-
-  useEffect(() => {
-    if (currentStudyCards.length === 0) {
-      navigation.navigate('Main' as never);
-    }
-  }, [currentStudyCards, navigation]);
-
-  useEffect(() => {
+  
+  // Flip card animation
+  const handleFlipCard = () => {
+    'worklet';
     if (isFlipped) {
-      rotation.value = withTiming(190, {
+      rotation.value = withTiming(0, {
+        duration: 500,
+        easing: Easing.inOut(Easing.ease),
+      });
+    } else {
+      rotation.value = withTiming(180, {
         duration: 500,
         easing: Easing.inOut(Easing.ease),
       });
     }
-  }, [isFlipped, rotation]);
-
+    flipCard();
+  };
+  
+  // Sync rotation with isFlipped
   useEffect(() => {
-    if (!timerActive && timeLeft > 0 && !isFlipped) {
+    if (isFlipped) {
+      rotation.value = 180;
+    } else {
+      rotation.value = 0;
+    }
+  }, [isFlipped]);
+  
+  // Animated styles for front and back of card
+  const frontAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { perspective: 1000 },
+      { rotateY: `${rotation.value}deg` },
+    ],
+    backfaceVisibility: 'hidden',
+    opacity: rotation.value < 90 ? 1 : 0,
+  }));
+
+  const backAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { perspective: 1000 },
+      { rotateY: `${rotation.value + 180}deg` },
+    ],
+    backfaceVisibility: 'hidden',
+    opacity: rotation.value >= 90 ? 1 : 0,
+  }));
+
+  // Initialize study session when the screen mounts or params change
+  useEffect(() => {
+    if (params?.startSession) {
+      const selectedDecks = decks.filter((deck) => selectedDeckIds.includes(deck.id));
+      const combinedCards = selectedDecks.flatMap((deck) => 
+        deck.cards.map((card) => ({
+          ...card,
+          deckId: deck.id,
+          deckName: deck.name,
+          deckColor: deck.color,
+        }))
+      );
+      setStudyCards(combinedCards);
+
+      // Clear the startSession param to prevent re-initialization
+      navigation.setParams({ startSession: false } as any);
+    }
+  }, [params?.startSession, selectedDeckIds, decks, setStudyCards, navigation]);
+
+  // Handle back button press
+  useEffect(() => {
+    const backHandler = () => {
+      if (resetStudySession) {
+        resetStudySession();
+      }
+      return false;
+    };
+
+    const backHandlerEvent = navigation.addListener('beforeRemove', backHandler as any);
+    return () => backHandlerEvent();
+  }, [navigation, resetStudySession]);
+  
+  // Handle empty deck selection
+  useEffect(() => {
+    if (currentStudyCards && currentStudyCards.length === 0 && selectedDeckIds.length === 0) {
+      navigation.navigate('Home');
+    }
+  }, [currentStudyCards, selectedDeckIds, navigation]);
+  
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (pauseTimer) pauseTimer();
+    };
+  }, [pauseTimer]);
+
+  // Efecto para el temporizador
+  useEffect(() => {
+    let interval: NodeJS.Timeout | undefined;
+    if (timerActive && tickTimer) {
+      interval = setInterval(tickTimer, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [timerActive, tickTimer]);
+
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const currentCard = currentStudyCards[currentCardIndex];
+
+  // No navegamos automáticamente para evitar problemas de navegación anidada
+  // en su lugar, mostramos un estado de carga
+
+  // Timer effect
+  useEffect(() => {
+    if (!timerActive && timeLeft && timeLeft > 0 && !isFlipped && tickTimer) {
       timerRef.current = setTimeout(() => {
         tickTimer();
       }, 1000);
     } else if (timeLeft === 0 && !isFlipped) {
-      flipCard();
+      handleFlipCard();
     }
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [timerActive, timeLeft, isFlipped, tickTimer, flipCard]);
-
-  const frontAnimatedStyle = useAnimatedStyle(() => {
-    const rotateValue = interpolate(rotation.value, [0, 190], [0, 180]);
-
-    return {
-      transform: [
-        {
-          perspective: 1000,
-        },
-        {
-          rotateY: `${rotateValue}deg`,
-        },
-      ],
-      backfaceVisibility: 'hidden',
-      opacity: rotation.value < 90 ? 1 : 0,
-    };
-  });
-
-  const backAnimatedStyle = useAnimatedStyle(() => {
-    const rotateValue = interpolate(rotation.value, [0, 180], [180, 360]);
-
-    return {
-      transform: [{ perspective: 1000 }, { rotateY: `${rotateValue}deg` }],
-      backfaceVisibility: 'hidden',
-      opacity: rotation.value >= 90 ? 1 : 0,
-    };
-  });
+  }, [timerActive, timeLeft, isFlipped, tickTimer]);
 
   const handleDoubleTap = () => {
-    if (!isFlipped) {
-      flipCard();
-    }
+    handleFlipCard();
   };
 
   const handleBackToDeck = () => {
-    resetStudySession();
-    navigation.navigate('Home' as never);
+    if (resetStudySession) {
+      resetStudySession();
+    }
+    navigation.navigate('Home');
   };
 
-  if (!currentCard) return null;
+  // Show loading state if no cards are loaded yet
+  if (!currentStudyCards || currentStudyCards.length === 0 || !currentCard) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centered]}>
+        <Text>No hay tarjetas para estudiar</Text>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.navigate('Home')}
+        >
+          <Ionicons name="chevron-back" size={20} color={colors.pink[700]} />
+          <Text style={styles.backText}>Volver al inicio</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -128,13 +219,13 @@ export default function StudyScreen() {
             style={[
               styles.progressFill,
               {
-                width: `${(currentCardIndex / currentStudyCards.length) * 100}%`,
+                width: `${((currentCardIndex || 0) / (currentStudyCards?.length || 1)) * 100}%`,
               },
             ]}
           />
         </View>
         <Text style={styles.progressText}>
-          {currentCardIndex + 1} / {currentStudyCards.length}
+          {(currentCardIndex || 0) + 1} / {currentStudyCards?.length || 0}
         </Text>
       </View>
 
@@ -149,7 +240,7 @@ export default function StudyScreen() {
             style={[styles.card, styles.questionCard, frontAnimatedStyle]}
           >
             <View style={styles.cardContent}>
-              <Text style={styles.questionText}>{currentCard.question}</Text>
+              <Text style={styles.questionText}>{currentCard?.question || 'No hay pregunta disponible'}</Text>
             </View>
             <Text style={styles.tapHint}>
               Doble toque para ver la respuesta
@@ -162,7 +253,7 @@ export default function StudyScreen() {
           >
             <View style={styles.cardContent}>
               <Text style={styles.answerLabel}>Respuesta:</Text>
-              <Text style={styles.answerText}>{currentCard.answer}</Text>
+              <Text style={styles.answerText}>{currentCard?.answer || 'No hay respuesta disponible'}</Text>
             </View>
           </Animated.View>
         </View>
@@ -178,6 +269,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'white',
     padding: 16,
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   header: {
     flexDirection: 'row',
@@ -223,7 +319,8 @@ const styles = StyleSheet.create({
   card: {
     position: 'absolute',
     width: '100%',
-    height: '100%',
+    height: height * 0.5, // Reducir la altura de la tarjeta
+    maxHeight: 400, // Altura máxima para pantallas grandes
     borderRadius: 12,
     padding: 24,
     elevation: 3,
@@ -231,6 +328,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   questionCard: {
     backgroundColor: colors.pink[50],
